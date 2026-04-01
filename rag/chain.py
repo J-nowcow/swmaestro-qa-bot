@@ -88,6 +88,7 @@ def log_query(question: str, answer: str):
             req.post(webhook_url, json={
                 "timestamp": ts,
                 "question": question,
+                "answer_preview": answer[:100],
                 "answer_length": len(answer),
             }, timeout=5)
         except Exception:
