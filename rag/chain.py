@@ -30,24 +30,35 @@ SYSTEM_PROMPT = """당신은 AI·SW마에스트로 프로그램의 공식 정보
 1. 아래 제공된 컨텍스트 정보만을 기반으로 답변하세요.
 2. 컨텍스트에 없는 내용은 "해당 정보는 공식 자료에서 확인되지 않습니다. 공식 사이트(swmaestro.ai)를 참고해주세요."라고 답변하세요.
 3. 답변은 명확하고 친절하게 작성하세요.
-4. **답변 끝에 반드시 출처를 표시하세요.** 형식:
-
-📎 출처:
-- [페이지 제목 - 섹션](URL)
-
-5. 출처는 실제로 답변에 사용한 컨텍스트의 URL만 포함하세요.
+4. 출처 링크는 표시하지 마세요. 출처는 시스템이 자동으로 추가합니다.
 """
 
 
 def build_context(results: list[dict]) -> str:
+    """URL 제외하고 본문만 컨텍스트로 전달 (토큰 절약)"""
     parts = []
     for i, r in enumerate(results, 1):
         parts.append(
-            f"[출처 {i}] {r['page_title']} - {r['section']}\n"
-            f"URL: {r['source_url']}\n"
-            f"내용: {r['content']}\n"
+            f"[{i}] {r['page_title']} - {r['section']}\n"
+            f"{r['content']}\n"
         )
     return "\n---\n".join(parts)
+
+
+def build_sources(results: list[dict]) -> str:
+    """출처 링크를 코드에서 직접 생성 (LLM 미개입)"""
+    seen = set()
+    lines = []
+    for r in results:
+        url = r["source_url"]
+        if url in seen:
+            continue
+        seen.add(url)
+        title = r["page_title"]
+        section = r["section"]
+        label = f"{title} - {section}" if section != title else title
+        lines.append(f"- [{label}]({url})")
+    return "\n📎 출처:\n" + "\n".join(lines)
 
 
 def _call_gemini(messages: list[dict], status_callback=None) -> tuple[str, bool]:
@@ -153,9 +164,15 @@ def ask(question: str, chat_history: list[dict] | None = None, status_callback=N
 
     messages.append({"role": "user", "parts": [{"text": user_message}]})
 
-    answer, used_fallback = _call_gemini(messages, status_callback=status_callback)
+    llm_answer, used_fallback = _call_gemini(messages, status_callback=status_callback)
 
-    # 5) 캐시 저장 (실패 응답은 캐시 안 함)
+    # 5) 출처 링크 코드에서 추가
+    if "요청이 많아" not in llm_answer and "확인되지 않습니다" not in llm_answer:
+        answer = llm_answer + "\n\n" + build_sources(results)
+    else:
+        answer = llm_answer
+
+    # 6) 캐시 저장 (실패 응답은 캐시 안 함)
     if "요청이 많아" not in answer:
         cache.put(question, answer, query_vector)
 
