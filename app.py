@@ -104,7 +104,7 @@ if new_question:
 
         status_placeholder.empty()
         if used_fallback:
-            st.info("요청이 많아 대체 모델로 답변했습니다. 답변 품질이 다소 다를 수 있습니다.")
+            st.info("요청이 많아 대체 모델로 답변했습니다. 답변 품질이 다소 떨어질 수 있습니다.")
         st.markdown(answer)
 
     st.session_state.messages.append({"role": "assistant", "content": answer})
