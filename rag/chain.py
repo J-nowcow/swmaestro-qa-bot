@@ -1,6 +1,8 @@
-"""RAG 체인: 검색된 컨텍스트 + Gemini REST API로 답변 생성"""
+"""RAG 체인: 검색된 컨텍스트 + Gemini REST API로 답변 생성 (모델 폴백 포함)"""
 import os
+import time
 import urllib3
+from datetime import datetime, timezone, timedelta
 
 import requests as req
 
@@ -8,7 +10,8 @@ from rag.retriever import retrieve
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-CHAT_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
 
 SYSTEM_PROMPT = """당신은 AI·SW마에스트로 프로그램의 공식 정보를 기반으로 답변하는 Q&A 어시스턴트입니다.
 
@@ -26,7 +29,6 @@ SYSTEM_PROMPT = """당신은 AI·SW마에스트로 프로그램의 공식 정보
 
 
 def build_context(results: list[dict]) -> str:
-    """검색 결과를 컨텍스트 문자열로 변환"""
     parts = []
     for i, r in enumerate(results, 1):
         parts.append(
@@ -38,7 +40,7 @@ def build_context(results: list[dict]) -> str:
 
 
 def _call_gemini(messages: list[dict]) -> str:
-    """Gemini REST API 직접 호출"""
+    """모델 폴백 포함 Gemini REST API 호출"""
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY 환경변수가 설정되지 않았습니다.")
@@ -49,51 +51,56 @@ def _call_gemini(messages: list[dict]) -> str:
         "generationConfig": {"temperature": 0.3},
     }
 
-    import time
-    for attempt in range(3):
-        resp = req.post(
-            f"{CHAT_URL}?key={api_key}",
-            json=payload,
-            verify=False,
-            timeout=60,
-        )
-        if resp.status_code == 429:
-            wait = 10 * (attempt + 1)
-            time.sleep(wait)
-            continue
-        resp.raise_for_status()
-        break
-    data = resp.json()
+    last_error = None
+    for model in FALLBACK_MODELS:
+        url = f"{BASE_URL}/{model}:generateContent?key={api_key}"
 
-    if "error" in data:
-        return f"API 오류가 발생했습니다: {data['error'].get('message', '알 수 없는 오류')}. 잠시 후 다시 시도해주세요."
+        for attempt in range(2):
+            resp = req.post(url, json=payload, verify=False, timeout=60)
+            if resp.status_code == 429:
+                if attempt == 0:
+                    time.sleep(5)
+                    continue
+                break  # 다음 모델로
+            if resp.status_code == 200:
+                data = resp.json()
+                if "candidates" in data:
+                    print(f"[LLM] model={model} ok")
+                    return data["candidates"][0]["content"]["parts"][0]["text"]
+            last_error = resp.text
+            break
 
-    try:
-        return data["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError):
-        return "답변을 생성하지 못했습니다. 잠시 후 다시 시도해주세요."
+        print(f"[LLM] model={model} rate limited, trying next...")
+
+    return "현재 요청이 많아 답변을 생성할 수 없습니다. 잠시 후 다시 시도해주세요."
+
+
+def log_query(question: str, answer: str):
+    """질문/답변 로그 기록"""
+    kst = timezone(timedelta(hours=9))
+    ts = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[LOG] {ts} | Q: {question[:80]}")
+
+    # Google Sheets 웹훅 (설정된 경우)
+    webhook_url = os.getenv("LOG_WEBHOOK_URL")
+    if webhook_url:
+        try:
+            req.post(webhook_url, json={
+                "timestamp": ts,
+                "question": question,
+                "answer_length": len(answer),
+            }, timeout=5)
+        except Exception:
+            pass
 
 
 def ask(question: str, chat_history: list[dict] | None = None) -> str:
-    """질문에 대한 답변 생성
-
-    Args:
-        question: 사용자 질문
-        chat_history: 이전 대화 기록 [{"role": "user"|"assistant", "content": "..."}]
-
-    Returns:
-        답변 문자열 (출처 포함)
-    """
-    # 1) 관련 문서 검색
     results = retrieve(question, top_k=5)
 
     if not results:
         return "관련 정보를 찾을 수 없습니다. 공식 사이트(https://swmaestro.ai)를 확인해주세요."
 
-    # 2) 컨텍스트 구성
     context = build_context(results)
-
-    # 3) 메시지 구성 (Gemini API 형식)
     messages = []
 
     if chat_history:
@@ -109,5 +116,6 @@ def ask(question: str, chat_history: list[dict] | None = None) -> str:
 
     messages.append({"role": "user", "parts": [{"text": user_message}]})
 
-    # 4) LLM 호출
-    return _call_gemini(messages)
+    answer = _call_gemini(messages)
+    log_query(question, answer)
+    return answer
