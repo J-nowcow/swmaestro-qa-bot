@@ -41,7 +41,9 @@ with st.sidebar:
     st.caption("서울특별시 마포구 마포대로 89\n포스트타워 7층, 12층")
     st.divider()
     st.caption("이 챗봇은 공식 사이트 정보 기반이며,\n최신 정보와 다를 수 있습니다.")
-    st.markdown("[![GitHub stars](https://img.shields.io/github/stars/J-nowcow/swmaestro-qa-bot?style=social)](https://github.com/J-nowcow/swmaestro-qa-bot)")
+    import hashlib, time
+    cache_bust = hashlib.md5(str(int(time.time() // 300)).encode()).hexdigest()[:6]
+    st.markdown(f"[![GitHub stars](https://img.shields.io/github/stars/J-nowcow/swmaestro-qa-bot?style=social&v={cache_bust})](https://github.com/J-nowcow/swmaestro-qa-bot)")
     st.caption("GitHub Star는 사랑입니다 :)")
 
     if st.button("대화 초기화", use_container_width=True):
