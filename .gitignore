@@ -1,6 +1,7 @@
 .env
 __pycache__/
 *.pyc
+.pytest_cache/
 data/raw/
 # data/chroma_db/ — 배포용으로 repo에 포함
 .streamlit/secrets.toml
