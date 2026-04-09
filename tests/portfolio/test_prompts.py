@@ -50,3 +50,29 @@ def test_evaluation_schema_shape():
 def test_questions_schema_shape():
     assert QUESTIONS_SCHEMA["type"] == "object"
     assert "categories" in QUESTIONS_SCHEMA["properties"]
+
+
+def test_evaluation_schema_score_range():
+    crit_item = EVALUATION_SCHEMA["properties"]["criteria"]["items"]
+    score = crit_item["properties"]["score"]
+    assert score["minimum"] == 1
+    assert score["maximum"] == 5
+
+
+def test_evaluation_schema_criteria_count_constraint():
+    criteria = EVALUATION_SCHEMA["properties"]["criteria"]
+    assert criteria["minItems"] == 10
+    assert criteria["maxItems"] == 10
+
+
+def test_questions_schema_categories_count_constraint():
+    categories = QUESTIONS_SCHEMA["properties"]["categories"]
+    assert categories["minItems"] == 5
+    assert categories["maxItems"] == 5
+
+
+def test_questions_schema_per_category_question_constraint():
+    cat_item = QUESTIONS_SCHEMA["properties"]["categories"]["items"]
+    questions = cat_item["properties"]["questions"]
+    assert questions["minItems"] == 3
+    assert questions["maxItems"] == 5

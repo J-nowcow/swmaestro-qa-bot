@@ -72,12 +72,14 @@ EVALUATION_SCHEMA: dict = {
         },
         "criteria": {
             "type": "array",
+            "minItems": 10,
+            "maxItems": 10,
             "items": {
                 "type": "object",
                 "properties": {
                     "id": {"type": "integer"},
                     "title": {"type": "string"},
-                    "score": {"type": "integer"},
+                    "score": {"type": "integer", "minimum": 1, "maximum": 5},
                     "evaluation": {"type": "string"},
                     "evidence": {"type": "string"},
                 },
@@ -93,12 +95,16 @@ QUESTIONS_SCHEMA: dict = {
     "properties": {
         "categories": {
             "type": "array",
+            "minItems": 5,
+            "maxItems": 5,
             "items": {
                 "type": "object",
                 "properties": {
                     "name": {"type": "string"},
                     "questions": {
                         "type": "array",
+                        "minItems": 3,
+                        "maxItems": 5,
                         "items": {"type": "string"},
                     },
                     "rationale": {"type": "string"},
