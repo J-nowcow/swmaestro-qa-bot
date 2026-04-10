@@ -113,3 +113,17 @@ def test_call_multimodal_missing_key_raises(monkeypatch):
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     with pytest.raises(ValueError):
         call_multimodal(system_prompt="s", user_text="u", images=[])
+
+
+@patch("portfolio.llm.req.post")
+def test_call_multimodal_prefers_portfolio_specific_env_key(mock_post, monkeypatch):
+    """GOOGLE_API_KEY_PORTFOLIO should be preferred over GOOGLE_API_KEY."""
+    monkeypatch.setenv("GOOGLE_API_KEY", "shared-key")
+    monkeypatch.setenv("GOOGLE_API_KEY_PORTFOLIO", "portfolio-key")
+    mock_post.return_value = _ok_response()
+
+    call_multimodal(system_prompt="s", user_text="u", images=[])
+
+    url = mock_post.call_args.args[0]
+    assert "portfolio-key" in url
+    assert "shared-key" not in url

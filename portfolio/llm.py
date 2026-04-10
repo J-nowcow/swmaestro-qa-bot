@@ -116,7 +116,11 @@ def call_multimodal(
         ValueError: if API key is missing.
         LLMUnavailableError: if all models in the chain fail.
     """
-    key = api_key or os.getenv("GOOGLE_API_KEY")
+    key = (
+        api_key
+        or os.getenv("GOOGLE_API_KEY_PORTFOLIO")
+        or os.getenv("GOOGLE_API_KEY")
+    )
     if not key:
         raise ValueError("GOOGLE_API_KEY is not set and no api_key was provided")
 
