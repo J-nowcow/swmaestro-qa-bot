@@ -81,4 +81,14 @@ def compose_result_md(
     out.append(f"- 모델: {metadata.get('model_used', '')}")
     out.append("")
 
+    out.append("---")
+    out.append("")
+    out.append(
+        "_📚 이 도구의 10가지 평가 기준은 카카오톡 오픈채팅방 "
+        "**'소프트웨어 마에스트로 준비방'** 에서 "
+        "**엄지척 재이지(SW마에스트로 15기)** 님이 공유해주신 "
+        "포트폴리오 꿀팁을 기반으로 만들어졌습니다._"
+    )
+    out.append("")
+
     return "\n".join(out)

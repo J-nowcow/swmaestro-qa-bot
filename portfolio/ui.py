@@ -80,6 +80,14 @@ def _render_sidebar(ip_hash: str) -> None:
         f"- 본인 분석: **{ipst['ip_used']} / {ipst['ip_limit']}**"
     )
     st.sidebar.caption("BYOK(본인 키) 사용 시 카운트되지 않습니다.")
+    st.sidebar.divider()
+    st.sidebar.caption(
+        "📚 **평가 기준 출처**\n\n"
+        "이 도구의 10가지 평가 기준은 카카오톡 오픈채팅방 "
+        "**'소프트웨어 마에스트로 준비방'** 에서 "
+        "**엄지척 재이지(SW마에스트로 15기)** 님이 공유해주신 "
+        "포트폴리오 꿀팁을 기반으로 만들어졌습니다."
+    )
 
 
 def _try_parse_uploaded(zip_bytes: bytes) -> ParsedPortfolio | None:
