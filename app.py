@@ -67,7 +67,7 @@ if "popular_items" not in st.session_state:
 st.markdown("# 🎓 SW마에스트로 Q&A")
 
 # ─── 탭 구성 ───
-tab_chat, tab_search, tab_popular, tab_admin = st.tabs(["💬 채팅", "📚 검색", "⭐ 인기 질문", "🔒 관리자"])
+tab_chat, tab_search, tab_popular = st.tabs(["💬 채팅", "📚 검색", "⭐ 인기 질문"])
 
 # ═══════════════════════════════════════
 # 💬 채팅 탭
@@ -196,59 +196,3 @@ with tab_popular:
     else:
         st.info("인기 질문 데이터가 아직 준비되지 않았습니다.")
 
-# ═══════════════════════════════════════
-# 🔒 관리자 탭
-# ═══════════════════════════════════════
-with tab_admin:
-    import os
-    from rag import db
-
-    admin_pw = os.getenv("ADMIN_PASSWORD", "admin1234")
-
-    if "admin_authed" not in st.session_state:
-        st.session_state.admin_authed = False
-
-    if not st.session_state.admin_authed:
-        pw = st.text_input("관리자 비밀번호", type="password", key="admin_pw")
-        if pw:
-            if pw == admin_pw:
-                st.session_state.admin_authed = True
-                st.rerun()
-            else:
-                st.error("비밀번호가 틀렸습니다.")
-    else:
-        st.markdown("## 관리자 대시보드")
-
-        admin_tab1, admin_tab2, admin_tab3 = st.tabs(["📋 로그", "💬 피드백", "📊 통계"])
-
-        with admin_tab1:
-            logs = db.select("logs", {"order": "created_at.desc"}, limit=50)
-            if logs:
-                st.dataframe(
-                    [{"시간": l.get("created_at", "")[:19], "세션": l.get("session_id", ""),
-                      "질문": l.get("question", ""), "캐시": l.get("cached", False)} for l in logs],
-                    use_container_width=True,
-                )
-            else:
-                st.info("로그가 없습니다.")
-
-        with admin_tab2:
-            fb = db.select("feedback", {"order": "created_at.desc"}, limit=50)
-            if fb:
-                st.dataframe(
-                    [{"시간": f.get("created_at", "")[:19], "세션": f.get("session_id", ""),
-                      "질문": f.get("question", ""), "피드백": f.get("feedback_type", "")} for f in fb],
-                    use_container_width=True,
-                )
-            else:
-                st.info("피드백이 없습니다.")
-
-        with admin_tab3:
-            total_logs = len(db.select("logs", limit=1000))
-            total_fb = len(db.select("feedback", limit=1000))
-            unhelpful = len([f for f in db.select("feedback", {"feedback_type": "eq.unhelpful"}, limit=1000)])
-
-            c1, c2, c3 = st.columns(3)
-            c1.metric("총 질문 수", total_logs)
-            c2.metric("피드백 수", total_fb)
-            c3.metric("👎 비율", f"{(unhelpful/total_fb*100):.0f}%" if total_fb > 0 else "0%")
