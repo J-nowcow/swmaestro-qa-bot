@@ -22,11 +22,42 @@ if not st.session_state.unified_admin_authed:
     st.stop()
 
 # 인증 후
-tab_pf, tab_qa = st.tabs(["📋 포트폴리오 코치", "🎓 Q&A 챗봇"])
+tab_pf, tab_qa, tab_fb = st.tabs(["📋 포트폴리오 코치", "🎓 Q&A 챗봇", "💬 피드백"])
 
 with tab_pf:
     from portfolio.admin import render as render_portfolio_admin
     render_portfolio_admin()
+
+with tab_fb:
+    from rag import db as _fb_db
+    from portfolio import storage as _fb_storage
+
+    st.markdown("### 사용자 피드백 (최근 50건)")
+    fb_rows = _fb_db.select("portfolio_feedback", {"order": "created_at.desc"}, limit=50)
+    if not fb_rows:
+        st.info("아직 피드백이 없습니다.")
+    else:
+        for r in fb_rows:
+            with st.container(border=True):
+                col_time, col_status = st.columns([4, 1])
+                with col_time:
+                    st.caption(f"🕐 {(r.get('created_at') or '')[:19]}")
+                with col_status:
+                    status = r.get("status", "new")
+                    if status == "new":
+                        st.markdown("🔴 **미확인**")
+                    elif status == "read":
+                        st.markdown("🟢 확인")
+                    else:
+                        st.markdown(f"⚪ {status}")
+                st.markdown(r.get("message", ""))
+                img_path = r.get("image_path")
+                if img_path:
+                    url = _fb_storage.get_signed_url(img_path)
+                    if url:
+                        st.image(url, width=400)
+                    else:
+                        st.caption(f"📎 이미지: {img_path} (URL 생성 실패)")
 
 with tab_qa:
     # === 기존 app.py에서 옮겨온 Q&A 관리자 로직 ===

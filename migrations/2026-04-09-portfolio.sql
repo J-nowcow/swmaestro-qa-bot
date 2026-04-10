@@ -50,3 +50,16 @@ CREATE TABLE IF NOT EXISTS portfolio_daily_count (
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('portfolio-uploads', 'portfolio-uploads', false)
 ON CONFLICT (id) DO NOTHING;
+
+-- 5. User feedback
+CREATE TABLE IF NOT EXISTS portfolio_feedback (
+    id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at      timestamptz NOT NULL DEFAULT now(),
+    ip_hash         text,
+    message         text NOT NULL,
+    image_path      text,
+    status          text NOT NULL DEFAULT 'new'
+);
+
+CREATE INDEX IF NOT EXISTS idx_portfolio_feedback_created
+    ON portfolio_feedback(created_at DESC);

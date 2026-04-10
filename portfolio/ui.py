@@ -306,6 +306,74 @@ def _render_result() -> None:
     st.markdown(md)
 
 
+def _render_feedback(ip_hash: str) -> None:
+    st.divider()
+    st.markdown("## 💬 피드백 / 문의")
+
+    st.markdown(
+        "기능 건의, 버그 제보, 문의사항을 아래 방법으로 보내주세요."
+    )
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown(
+            "**카카오톡 오픈채팅**\n\n"
+            "검색: **리틀** (또는 아래 링크)\n\n"
+            "💬 [오픈채팅 바로가기](https://open.kakao.com/)"
+        )
+    with col_b:
+        st.markdown(
+            "**GitHub Issue**\n\n"
+            "버그 제보/기능 요청은 이슈로 남겨주세요\n\n"
+            "🐛 [이슈 작성하기](https://github.com/J-nowcow/swmaestro-mentee-tools/issues/new)"
+        )
+
+    st.markdown("---")
+    st.markdown("#### 또는 아래에 직접 작성")
+
+    if "pf_feedback_sent" not in st.session_state:
+        st.session_state.pf_feedback_sent = False
+
+    if st.session_state.pf_feedback_sent:
+        st.success("피드백이 전송되었습니다. 감사합니다!")
+        if st.button("새 피드백 작성", key="fb_reset"):
+            st.session_state.pf_feedback_sent = False
+            st.rerun()
+        return
+
+    msg = st.text_area(
+        "피드백 내용",
+        placeholder="기능 건의, 버그 제보, 기타 문의사항을 자유롭게 적어주세요...",
+        key="pf_feedback_msg",
+        height=120,
+    )
+    img = st.file_uploader(
+        "스크린샷 첨부 (선택)",
+        type=["png", "jpg", "jpeg", "webp"],
+        key="pf_feedback_img",
+    )
+
+    if st.button("피드백 보내기", type="secondary", disabled=not msg.strip()):
+        from rag import db as _db
+
+        image_path = None
+        if img is not None:
+            import secrets as _sec
+            from datetime import datetime, timezone, timedelta
+
+            _now = datetime.now(timezone(timedelta(hours=9)))
+            _path = f"feedback/{_now.strftime('%Y%m%d/%H%M%S')}-{_sec.token_hex(3)}/{img.name}"
+            if storage.upload_file(_path, img.read(), img.type or "image/png"):
+                image_path = _path
+
+        _db.insert("portfolio_feedback", {
+            "ip_hash": ip_hash,
+            "message": msg.strip(),
+            "image_path": image_path,
+        })
+        st.session_state.pf_feedback_sent = True
+        st.rerun()
+
+
 def render() -> None:
     _init_state()
     ip_hash = ratelimit.hash_ip(_client_ip())
@@ -317,4 +385,6 @@ def render() -> None:
         _render_uploader(ip_hash)
         if st.session_state.pf_error:
             st.error(st.session_state.pf_error)
+
+    _render_feedback(ip_hash)
 
