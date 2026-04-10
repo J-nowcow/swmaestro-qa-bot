@@ -1,19 +1,9 @@
-"""SW마에스트로 Q&A 챗봇 - Streamlit 앱"""
+"""SW마에스트로 Q&A 챗봇 페이지 본문"""
 import streamlit as st
-from dotenv import load_dotenv
-
-load_dotenv()
 
 from rag.chain import ask, semantic_search
 from rag.feedback import log_feedback
 from rag.cache import load_popular_cache
-
-# 페이지 설정
-st.set_page_config(
-    page_title="SW마에스트로 Q&A",
-    page_icon="🎓",
-    layout="centered",
-)
 
 st.markdown("""
 <style>

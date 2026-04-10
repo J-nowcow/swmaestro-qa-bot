@@ -1,16 +1,7 @@
-"""통합 관리자 페이지 - Q&A 챗봇 + 포트폴리오 코치"""
+"""통합 관리자 페이지 본문 - Q&A 챗봇 + 포트폴리오 코치"""
 import os
 
 import streamlit as st
-from dotenv import load_dotenv
-
-load_dotenv()
-
-st.set_page_config(
-    page_title="관리자",
-    page_icon="🔒",
-    layout="wide",
-)
 
 st.title("🔒 관리자 대시보드")
 
