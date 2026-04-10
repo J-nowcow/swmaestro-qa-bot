@@ -82,9 +82,33 @@ def _resize_to_base64(raw: bytes, mime_type: str) -> str | None:
     return base64.b64encode(out.getvalue()).decode("ascii")
 
 
+def _unwrap_nested_zip(zip_bytes: bytes) -> bytes:
+    """If the zip contains a single .zip file inside, extract and return its bytes.
+
+    Notion sometimes exports as a double-zipped file:
+    outer.zip → ExportBlock-xxx.zip → actual .md + images.
+    """
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
+    except zipfile.BadZipFile:
+        return zip_bytes
+
+    entries = [i for i in zf.infolist() if not i.is_dir()]
+    if (
+        len(entries) == 1
+        and PurePosixPath(entries[0].filename).suffix.lower() == ".zip"
+    ):
+        with zf.open(entries[0]) as inner:
+            return inner.read()
+
+    zf.close()
+    return zip_bytes
+
+
 def parse_notion_zip(zip_bytes: bytes) -> ParsedPortfolio:
     """Parse a Notion markdown-export zip.
 
+    - Handles double-zipped Notion exports (zip-in-zip).
     - Combines all .md files in alphabetical order.
     - Strips Notion's 32-char hex id suffixes.
     - Extracts up to IMAGE_CAP images, resized to IMAGE_MAX_DIM, base64 encoded.
@@ -94,6 +118,8 @@ def parse_notion_zip(zip_bytes: bytes) -> ParsedPortfolio:
         NoMarkdownError: zip has zero .md files.
         ZipTooLargeError: uncompressed size > UNCOMPRESSED_LIMIT.
     """
+    zip_bytes = _unwrap_nested_zip(zip_bytes)
+
     try:
         zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
     except zipfile.BadZipFile as e:

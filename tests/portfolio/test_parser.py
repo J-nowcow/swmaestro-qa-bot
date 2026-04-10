@@ -101,6 +101,31 @@ def test_parse_zip_too_large_raises():
         parse_notion_zip(buf.getvalue())
 
 
+def test_parse_handles_nested_zip():
+    """Notion sometimes exports as zip-in-zip. Parser should auto-unwrap."""
+    import io
+    import zipfile
+
+    # Build inner zip with actual md content
+    inner_buf = io.BytesIO()
+    with zipfile.ZipFile(inner_buf, "w", zipfile.ZIP_DEFLATED) as inner_z:
+        inner_z.writestr(
+            "About abcdef1234567890abcdef1234567890.md",
+            "# About\n\nNested content.\n",
+        )
+    inner_bytes = inner_buf.getvalue()
+
+    # Wrap it in outer zip (Notion style: ExportBlock-xxx.zip)
+    outer_buf = io.BytesIO()
+    with zipfile.ZipFile(outer_buf, "w", zipfile.ZIP_DEFLATED) as outer_z:
+        outer_z.writestr("ExportBlock-abc123-Part-1.zip", inner_bytes)
+
+    result = parse_notion_zip(outer_buf.getvalue())
+    assert "# About" in result.markdown
+    assert "Nested content" in result.markdown
+    assert result.stats.page_count == 1
+
+
 def test_parse_does_not_strip_long_hex_sequences():
     """40-char git SHAs should not be stripped (they're > 32 chars)."""
     import io
