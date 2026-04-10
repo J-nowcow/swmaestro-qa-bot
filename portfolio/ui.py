@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 
 import streamlit as st
 
-from portfolio import admin, ratelimit, storage
+from portfolio import ratelimit, storage
 from portfolio.compose_md import compose_result_md
 from portfolio.evaluator import EvaluatorError, evaluate
 from portfolio.llm import LLMUnavailableError
@@ -48,7 +48,6 @@ def _init_state() -> None:
         "pf_uploaded_bytes": None,
         "pf_uploaded_name": None,
         "pf_parsed": None,
-        "pf_consent": False,
         "pf_byok_key": "",
         "pf_result_md": None,
         "pf_error": None,
@@ -234,12 +233,7 @@ def _render_uploader(ip_hash: str) -> None:
             help="키는 이 요청에만 사용되며 어디에도 저장되지 않습니다.",
         )
 
-    st.session_state.pf_consent = st.checkbox(
-        "업로드한 파일이 멘토 분석용으로 보관됨에 동의합니다",
-        value=st.session_state.pf_consent,
-    )
-
-    can_start = parsed is not None and st.session_state.pf_consent
+    can_start = parsed is not None
     if st.button("분석 시작", type="primary", disabled=not can_start):
         st.session_state.pf_error = None
         st.session_state.pf_result_md = None
@@ -257,7 +251,6 @@ def _render_result() -> None:
         if st.button("↻ 새로 분석"):
             for k in ("pf_uploaded_bytes", "pf_uploaded_name", "pf_parsed", "pf_result_md", "pf_meta", "pf_error"):
                 st.session_state[k] = None
-            st.session_state.pf_consent = False
             st.rerun()
     with col2:
         ts = (st.session_state.pf_meta or {}).get("timestamp", "result").replace(" ", "-").replace(":", "")
@@ -283,5 +276,3 @@ def render() -> None:
         if st.session_state.pf_error:
             st.error(st.session_state.pf_error)
 
-    st.divider()
-    admin.render()
