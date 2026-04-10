@@ -318,7 +318,7 @@ def _render_feedback(ip_hash: str) -> None:
         st.markdown(
             "**카카오톡 오픈채팅**\n\n"
             "검색: **리틀** (또는 아래 링크)\n\n"
-            "💬 [오픈채팅 바로가기](https://open.kakao.com/)"
+            "💬 [오픈채팅 바로가기](https://open.kakao.com/o/sC5wCG3b)"
         )
     with col_b:
         st.markdown(
