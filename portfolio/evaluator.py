@@ -29,12 +29,18 @@ def _validate(data: dict) -> None:
     for k in ("one_liner", "strengths", "weaknesses"):
         if k not in overall:
             raise EvaluatorError(f"overall missing '{k}'")
-    if not isinstance(data["criteria"], list) or len(data["criteria"]) == 0:
-        raise EvaluatorError("'criteria' must be a non-empty list")
+    if not isinstance(data["criteria"], list) or len(data["criteria"]) != 10:
+        got = len(data["criteria"]) if isinstance(data["criteria"], list) else "non-list"
+        raise EvaluatorError(f"'criteria' must have exactly 10 items, got {got}")
     for c in data["criteria"]:
         for k in ("id", "title", "score", "evaluation", "evidence"):
             if k not in c:
                 raise EvaluatorError(f"criterion missing '{k}'")
+        score = c["score"]
+        if not isinstance(score, int) or not (1 <= score <= 5):
+            raise EvaluatorError(
+                f"criterion {c.get('id')} score must be int 1-5, got {score!r}"
+            )
 
 
 def evaluate(
